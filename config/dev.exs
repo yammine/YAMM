@@ -6,6 +6,7 @@ config :yamm, YAMM.Repo,
   password: "postgres",
   database: "yamm_dev",
   hostname: "localhost",
+  port: 15432,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
@@ -74,3 +75,7 @@ config :phoenix, :stacktrace_depth, 20
 
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
+
+config :slack,
+  app_token: System.get_env("SLACK_TOKEN"),
+  web_token: System.get_env("SLACK_WEB_TOKEN")

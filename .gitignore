@@ -35,3 +35,6 @@ npm-debug.log
 
 # Ignore output from the ElixirLS language server
 .elixir_ls/
+
+# For dev env
+.env
