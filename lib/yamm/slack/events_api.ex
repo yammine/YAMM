@@ -1,8 +1,8 @@
 defmodule YAMM.Slack.EventsAPI do
   def process(event) do
-    IO.inspect(event)
     type = get_in(event, ["payload", "event", "type"])
     channel = get_in(event, ["payload", "event", "channel"])
+    user = get_in(event, ["payload", "event", "user"])
 
     ts =
       get_in(event, ["payload", "event", "thread_ts"]) ||
@@ -12,6 +12,8 @@ defmodule YAMM.Slack.EventsAPI do
 
     case type do
       "app_mention" ->
+        YAMM.Money.create_user(%{slack_user_id: user})
+
         Mojito.request(
           :post,
           "https://slack.com/api/chat.postMessage",

@@ -1,0 +1,14 @@
+<h2><%= @title %></h2>
+
+<%= f = form_for @changeset, "#",
+  id: "user-form",
+  phx_target: @myself,
+  phx_change: "validate",
+  phx_submit: "save" %>
+
+  <%= label f, :slack_user_id %>
+  <%= text_input f, :slack_user_id %>
+  <%= error_tag f, :slack_user_id %>
+
+  <%= submit "Save", phx_disable_with: "Saving..." %>
+</form>

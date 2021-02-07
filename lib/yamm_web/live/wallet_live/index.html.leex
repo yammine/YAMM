@@ -1,0 +1,35 @@
+<h1>Listing Wallets</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <%= live_modal @socket, YAMMWeb.WalletLive.FormComponent,
+    id: @wallet.id || :new,
+    title: @page_title,
+    action: @live_action,
+    wallet: @wallet,
+    return_to: Routes.wallet_index_path(@socket, :index) %>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Balance</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="wallets">
+    <%= for wallet <- @wallets do %>
+      <tr id="wallet-<%= wallet.id %>">
+        <td><%= wallet.balance %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.wallet_show_path(@socket, :show, wallet) %></span>
+          <span><%= live_patch "Edit", to: Routes.wallet_index_path(@socket, :edit, wallet) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: wallet.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Wallet", to: Routes.wallet_index_path(@socket, :new) %></span>

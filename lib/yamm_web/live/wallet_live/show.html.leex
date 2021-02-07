@@ -1,0 +1,22 @@
+<h1>Show Wallet</h1>
+
+<%= if @live_action in [:edit] do %>
+  <%= live_modal @socket, YAMMWeb.WalletLive.FormComponent,
+    id: @wallet.id,
+    title: @page_title,
+    action: @live_action,
+    wallet: @wallet,
+    return_to: Routes.wallet_show_path(@socket, :show, @wallet) %>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Balance:</strong>
+    <%= @wallet.balance %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.wallet_show_path(@socket, :edit, @wallet), class: "button" %></span>
+<span><%= live_redirect "Back", to: Routes.wallet_index_path(@socket, :index) %></span>
