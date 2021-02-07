@@ -6,6 +6,8 @@ defmodule YAMM.Application do
   use Application
 
   def start(_type, _args) do
+    url = YAMM.Slack.get_connect_ws("xapp-1-A01MXJPAQAU-1745649461952-7372b8cec807b30881c7ceef6db4cb7b3d15986207467ca719f080fb3c2130f8")
+
     children = [
       # Start the Ecto repository
       YAMM.Repo,
@@ -14,9 +16,10 @@ defmodule YAMM.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: YAMM.PubSub},
       # Start the Endpoint (http/https)
-      YAMMWeb.Endpoint
+      YAMMWeb.Endpoint,
       # Start a worker by calling: YAMM.Worker.start_link(arg)
       # {YAMM.Worker, arg}
+      {YAMM.Slack.Socket, "#{url}&debug_reconnects=true"}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

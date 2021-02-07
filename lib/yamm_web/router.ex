@@ -37,7 +37,7 @@ defmodule YAMMWeb.Router do
 
     scope "/" do
       pipe_through :browser
-      live_dashboard "/dashboard", metrics: YAMMWeb.Telemetry
+      live_dashboard "/dashboard", metrics: YAMMWeb.Telemetry, ecto_repos: [YAMM.Repo]
     end
   end
 end
