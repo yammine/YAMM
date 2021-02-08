@@ -6,7 +6,7 @@ defmodule YAMM.Money do
   import Ecto.Query, warn: false
   alias YAMM.Repo
 
-  alias YAMM.Money.{User, Wallet}
+  alias YAMM.Money.{User, Wallet, Movement}
   alias Ecto.Multi
 
   @doc """
@@ -205,5 +205,67 @@ defmodule YAMM.Money do
   """
   def change_wallet(%Wallet{} = wallet, attrs \\ %{}) do
     Wallet.changeset(wallet, attrs)
+  end
+
+  @doc """
+  Creates a movement.
+
+  ## Examples
+
+      iex> create_movement(wallet, %{field: value})
+      {:ok, %Movement{}}
+
+      iex> create_movement(wallet, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_movement(wallet = %Wallet{}, attrs \\ %{}) do
+    next_hash = generate_hash(wallet)
+    attrs_with_hash = Map.put(attrs, :hash, next_hash)
+
+    %Movement{}
+    |> Movement.changeset(attrs_with_hash)
+    |> Ecto.Changeset.put_assoc(:wallet, wallet)
+    |> Repo.insert()
+  end
+
+  defp generate_hash(wallet) do
+    wallet_id = wallet.id
+
+    query =
+      from m in Movement,
+        where: m.wallet_id == ^wallet_id,
+        order_by: [desc: :inserted_at],
+        limit: 1
+
+    case Repo.one(query) do
+      nil ->
+        # This would be the genesis hash
+        hash(wallet_id)
+
+      movement ->
+        hash(movement)
+    end
+  end
+
+  defp hash(term) do
+    phash = :erlang.phash2(term)
+
+    :sha256
+    |> :crypto.hash(Integer.to_string(phash))
+    |> Base.encode16(case: :lower)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking movement changes.
+
+  ## Examples
+
+      iex> change_movement(movement)
+      %Ecto.Changeset{data: %Movement{}}
+
+  """
+  def change_movement(%Movement{} = movement, attrs \\ %{}) do
+    Movement.changeset(movement, attrs)
   end
 end

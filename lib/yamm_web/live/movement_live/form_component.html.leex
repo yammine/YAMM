@@ -1,0 +1,18 @@
+<h2><%= @title %></h2>
+
+<%= f = form_for @changeset, "#",
+  id: "movement-form",
+  phx_target: @myself,
+  phx_change: "validate",
+  phx_submit: "save" %>
+
+  <%= label f, :amount %>
+  <%= number_input f, :amount, step: "any" %>
+  <%= error_tag f, :amount %>
+
+  <%= label f, :hash %>
+  <%= text_input f, :hash %>
+  <%= error_tag f, :hash %>
+
+  <%= submit "Save", phx_disable_with: "Saving..." %>
+</form>

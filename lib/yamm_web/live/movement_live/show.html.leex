@@ -1,0 +1,27 @@
+<h1>Show Movement</h1>
+
+<%= if @live_action in [:edit] do %>
+  <%= live_modal @socket, YAMMWeb.MovementLive.FormComponent,
+    id: @movement.id,
+    title: @page_title,
+    action: @live_action,
+    movement: @movement,
+    return_to: Routes.movement_show_path(@socket, :show, @movement) %>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Amount:</strong>
+    <%= @movement.amount %>
+  </li>
+
+  <li>
+    <strong>Hash:</strong>
+    <%= @movement.hash %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.movement_show_path(@socket, :edit, @movement), class: "button" %></span>
+<span><%= live_redirect "Back", to: Routes.movement_index_path(@socket, :index) %></span>

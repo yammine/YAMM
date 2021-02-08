@@ -120,4 +120,65 @@ defmodule YAMM.MoneyTest do
       assert %Ecto.Changeset{} = Money.change_wallet(wallet)
     end
   end
+
+  describe "movements" do
+    alias YAMM.Money.Movement
+
+    @valid_attrs %{amount: "120.5", hash: "some hash"}
+    @update_attrs %{amount: "456.7", hash: "some updated hash"}
+    @invalid_attrs %{amount: nil, hash: nil}
+
+    def movement_fixture(attrs \\ %{}) do
+      {:ok, movement} =
+        attrs
+        |> Enum.into(@valid_attrs)
+        |> Money.create_movement()
+
+      movement
+    end
+
+    test "list_movements/0 returns all movements" do
+      movement = movement_fixture()
+      assert Money.list_movements() == [movement]
+    end
+
+    test "get_movement!/1 returns the movement with given id" do
+      movement = movement_fixture()
+      assert Money.get_movement!(movement.id) == movement
+    end
+
+    test "create_movement/1 with valid data creates a movement" do
+      assert {:ok, %Movement{} = movement} = Money.create_movement(@valid_attrs)
+      assert movement.amount == Decimal.new("120.5")
+      assert movement.hash == "some hash"
+    end
+
+    test "create_movement/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Money.create_movement(@invalid_attrs)
+    end
+
+    test "update_movement/2 with valid data updates the movement" do
+      movement = movement_fixture()
+      assert {:ok, %Movement{} = movement} = Money.update_movement(movement, @update_attrs)
+      assert movement.amount == Decimal.new("456.7")
+      assert movement.hash == "some updated hash"
+    end
+
+    test "update_movement/2 with invalid data returns error changeset" do
+      movement = movement_fixture()
+      assert {:error, %Ecto.Changeset{}} = Money.update_movement(movement, @invalid_attrs)
+      assert movement == Money.get_movement!(movement.id)
+    end
+
+    test "delete_movement/1 deletes the movement" do
+      movement = movement_fixture()
+      assert {:ok, %Movement{}} = Money.delete_movement(movement)
+      assert_raise Ecto.NoResultsError, fn -> Money.get_movement!(movement.id) end
+    end
+
+    test "change_movement/1 returns a movement changeset" do
+      movement = movement_fixture()
+      assert %Ecto.Changeset{} = Money.change_movement(movement)
+    end
+  end
 end
