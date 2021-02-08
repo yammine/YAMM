@@ -2,12 +2,14 @@ defmodule YAMM.Money.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias YAMM.Money.Wallet
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "users" do
     field :slack_user_id, :string
 
-    has_many :wallets, YAMM.Money.Wallet
+    has_many :wallets, Wallet
 
     timestamps()
   end

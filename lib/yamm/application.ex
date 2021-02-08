@@ -16,7 +16,7 @@ defmodule YAMM.Application do
       # Start the Endpoint (http/https)
       YAMMWeb.Endpoint,
       # Our Slack SocketMode manager, you can use sys tracing by adding [debug: [:trace]] to the args
-      {YAMM.Slack.Socket, []}
+      {YAMM.Slack.Socket, [debug: [:trace]]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

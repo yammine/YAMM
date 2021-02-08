@@ -7,11 +7,9 @@ defmodule YAMM.Money.Wallet do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "wallets" do
-    field :balance, :decimal, default: 0
+    has_many :movements, Movement
 
-    has_many :movements, YAMM.Money.Movement
-
-    belongs_to :user, YAMM.Money.User
+    belongs_to :user, User
 
     timestamps()
   end
@@ -19,8 +17,7 @@ defmodule YAMM.Money.Wallet do
   @doc false
   def changeset(wallet, attrs) do
     wallet
-    |> cast(attrs, [:balance])
-    |> validate_required([:balance])
+    |> cast(attrs, [])
     |> foreign_key_constraint(:user_id)
   end
 

@@ -9,236 +9,77 @@ defmodule YAMM.Money do
   alias YAMM.Money.{User, Wallet, Movement}
   alias Ecto.Multi
 
-  @doc """
-  Returns the list of users.
-
-  ## Examples
-
-      iex> list_users()
-      [%User{}, ...]
-
-  """
   def list_users do
     Repo.all(User)
   end
 
-  @doc """
-  Gets a single user.
-
-  Raises `Ecto.NoResultsError` if the User does not exist.
-
-  ## Examples
-
-      iex> get_user!(123)
-      %User{}
-
-      iex> get_user!(456)
-      ** (Ecto.NoResultsError)
-
-  """
   def get_user!(id), do: Repo.get!(User, id)
 
   def get_user_by_slack_id(slack_id), do: Repo.get_by(User, slack_user_id: slack_id)
 
-  @doc """
-  Creates a user.
-
-  ## Examples
-
-      iex> create_user(%{field: value})
-      {:ok, %User{}}
-
-      iex> create_user(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
   def create_user(attrs \\ %{}) do
     Multi.new()
     |> Multi.insert(:user, User.changeset(%User{}, attrs))
-    |> Multi.insert(
+    |> Multi.run(
       :wallet,
-      fn %{user: user} ->
-        %Wallet{}
-        |> Wallet.changeset(%{})
-        |> Ecto.Changeset.put_assoc(:user, user)
+      fn repo, %{user: user} ->
+        create_wallet(user, %{}, repo)
       end
     )
     |> Repo.transaction()
   end
 
-  @doc """
-  Updates a user.
-
-  ## Examples
-
-      iex> update_user(user, %{field: new_value})
-      {:ok, %User{}}
-
-      iex> update_user(user, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def update_user(%User{} = user, attrs) do
-    user
-    |> User.changeset(attrs)
-    |> Repo.update()
-  end
-
-  @doc """
-  Deletes a user.
-
-  ## Examples
-
-      iex> delete_user(user)
-      {:ok, %User{}}
-
-      iex> delete_user(user)
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def delete_user(%User{} = user) do
-    Repo.delete(user)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking user changes.
-
-  ## Examples
-
-      iex> change_user(user)
-      %Ecto.Changeset{data: %User{}}
-
-  """
-  def change_user(%User{} = user, attrs \\ %{}) do
-    User.changeset(user, attrs)
-  end
-
-  @doc """
-  Returns the list of wallets.
-
-  ## Examples
-
-      iex> list_wallets()
-      [%Wallet{}, ...]
-
-  """
-  def list_wallets do
-    Repo.all(Wallet)
-  end
-
-  @doc """
-  Gets a single wallet.
-
-  Raises `Ecto.NoResultsError` if the Wallet does not exist.
-
-  ## Examples
-
-      iex> get_wallet!(123)
-      %Wallet{}
-
-      iex> get_wallet!(456)
-      ** (Ecto.NoResultsError)
-
-  """
   def get_wallet!(id), do: Repo.get!(Wallet, id)
 
-  @doc """
-  Creates a wallet.
+  def get_balances(user) do
+    wallets =
+      Wallet
+      |> where(user_id: ^user.id)
+      |> preload([:movements])
+      |> Repo.all()
 
-  ## Examples
+    Enum.map(wallets, fn wallet ->
+      %{id: wallet.id, balance: Wallet.balance(wallet)}
+    end)
+  end
 
-      iex> create_wallet(%{field: value})
-      {:ok, %Wallet{}}
-
-      iex> create_wallet(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_wallet(attrs \\ %{}) do
+  def create_wallet(user = %User{}, attrs \\ %{}, repo \\ Repo) do
     %Wallet{}
     |> Wallet.changeset(attrs)
-    |> Repo.insert()
+    |> Ecto.Changeset.put_assoc(:user, user)
+    |> repo.insert()
   end
 
-  @doc """
-  Updates a wallet.
+  def credit_user(user, amount) do
+    wallet_query =
+      from w in Wallet,
+        where: w.user_id == ^user.id,
+        limit: 1,
+        lock: "FOR UPDATE"
 
-  ## Examples
-
-      iex> update_wallet(wallet, %{field: new_value})
-      {:ok, %Wallet{}}
-
-      iex> update_wallet(wallet, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def update_wallet(%Wallet{} = wallet, attrs) do
-    wallet
-    |> Wallet.changeset(attrs)
-    |> Repo.update()
+    wallet = Repo.one(wallet_query)
+    create_movement(wallet, %{amount: amount})
   end
 
-  @doc """
-  Deletes a wallet.
-
-  ## Examples
-
-      iex> delete_wallet(wallet)
-      {:ok, %Wallet{}}
-
-      iex> delete_wallet(wallet)
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def delete_wallet(%Wallet{} = wallet) do
-    Repo.delete(wallet)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking wallet changes.
-
-  ## Examples
-
-      iex> change_wallet(wallet)
-      %Ecto.Changeset{data: %Wallet{}}
-
-  """
-  def change_wallet(%Wallet{} = wallet, attrs \\ %{}) do
-    Wallet.changeset(wallet, attrs)
-  end
-
-  @doc """
-  Creates a movement.
-
-  ## Examples
-
-      iex> create_movement(wallet, %{field: value})
-      {:ok, %Movement{}}
-
-      iex> create_movement(wallet, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_movement(wallet = %Wallet{}, attrs \\ %{}) do
-    next_hash = generate_hash(wallet)
+  defp create_movement(wallet = %Wallet{}, attrs \\ %{}, repo \\ Repo) do
+    next_hash = generate_hash(wallet.id, repo)
     attrs_with_hash = Map.put(attrs, :hash, next_hash)
 
     %Movement{}
     |> Movement.changeset(attrs_with_hash)
     |> Ecto.Changeset.put_assoc(:wallet, wallet)
-    |> Repo.insert()
+    |> repo.insert()
   end
 
-  defp generate_hash(wallet) do
-    wallet_id = wallet.id
-
+  defp generate_hash(wallet_id, repo) do
+    # Latest movement for wallet
     query =
       from m in Movement,
         where: m.wallet_id == ^wallet_id,
         order_by: [desc: :inserted_at],
         limit: 1
 
-    case Repo.one(query) do
+    case repo.one(query) do
       nil ->
         # This would be the genesis hash
         hash(wallet_id)
@@ -249,23 +90,13 @@ defmodule YAMM.Money do
   end
 
   defp hash(term) do
-    phash = :erlang.phash2(term)
+    phash =
+      term
+      |> :erlang.phash2()
+      |> Integer.to_string()
 
     :sha256
-    |> :crypto.hash(Integer.to_string(phash))
+    |> :crypto.hash(phash)
     |> Base.encode16(case: :lower)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking movement changes.
-
-  ## Examples
-
-      iex> change_movement(movement)
-      %Ecto.Changeset{data: %Movement{}}
-
-  """
-  def change_movement(%Movement{} = movement, attrs \\ %{}) do
-    Movement.changeset(movement, attrs)
   end
 end
