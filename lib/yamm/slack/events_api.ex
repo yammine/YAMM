@@ -1,7 +1,6 @@
 defmodule YAMM.Slack.EventsAPI do
   alias YAMM.Money.User
-
-  @token Application.get_env(:slack, :web_token)
+  alias YAMM.Parsers
 
   def process(event) do
     context = extract_context(event)
@@ -23,14 +22,30 @@ defmodule YAMM.Slack.EventsAPI do
     reply =
       case parse_text(context.text) do
         :balance_request ->
-          balance =
-            user
-            |> YAMM.Money.get_balances()
-            |> Enum.reduce(Decimal.new(0), fn wallet, acc ->
-              Decimal.add(acc, wallet.balance)
-            end)
+          balance = YAMM.Money.get_balance(user)
 
-          "Your total balance is: #{balance}"
+          "Your balance is: #{balance}"
+
+        :balance_for ->
+          {:ok, parsed} = YAMM.Parsers.Balances.parse(context.text)
+          target_user = fetch_internal_user(parsed.target)
+
+          balance = YAMM.Money.get_balance(target_user)
+
+          "Balance for <@#{parsed.target}>: #{balance}"
+
+        :transfer ->
+          case Parsers.Transfer.parse(context.text) do
+            {:ok, transfer_info} ->
+              amount = Decimal.new(transfer_info.amount)
+              target = fetch_internal_user(transfer_info.target)
+
+              {:ok, _} = YAMM.Money.transfer(user, target, amount)
+              "Transferred #{amount} $YAMM to <@#{transfer_info.target}>"
+
+            {:error, error} ->
+              "Error creating transfer: #{inspect(error)}"
+          end
 
         :grant_credit ->
           YAMM.Money.credit_user(user, Decimal.new("1.0"))
@@ -48,8 +63,14 @@ defmodule YAMM.Slack.EventsAPI do
       String.contains?(text, "my balance") ->
         :balance_request
 
+      String.contains?(text, "balance for") ->
+        :balance_for
+
       String.contains?(text, "give me money") ->
         :grant_credit
+
+      String.contains?(text, "transfer") ->
+        :transfer
 
       true ->
         :generic_reply
@@ -57,12 +78,14 @@ defmodule YAMM.Slack.EventsAPI do
   end
 
   defp post_message(text, context) do
+    token = Application.get_env(:slack, :web_token)
+
     Mojito.request(
       :post,
       "https://slack.com/api/chat.postMessage",
       [
         {"Content-type", "application/json"},
-        {"Authorization", "Bearer #{@token}"}
+        {"Authorization", "Bearer #{token}"}
       ],
       Jason.encode!(%{
         channel: context.channel,

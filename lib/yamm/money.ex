@@ -31,16 +31,10 @@ defmodule YAMM.Money do
 
   def get_wallet!(id), do: Repo.get!(Wallet, id)
 
-  def get_balances(user) do
-    wallets =
-      Wallet
-      |> where(user_id: ^user.id)
-      |> preload([:movements])
-      |> Repo.all()
-
-    Enum.map(wallets, fn wallet ->
-      %{id: wallet.id, balance: Wallet.balance(wallet)}
-    end)
+  def get_balance(user) do
+    user
+    |> wallet_for_user!(lock: :none)
+    |> Wallet.balance()
   end
 
   def create_wallet(user = %User{}, attrs \\ %{}, repo \\ Repo) do
@@ -59,6 +53,46 @@ defmodule YAMM.Money do
 
     wallet = Repo.one(wallet_query)
     create_movement(wallet, %{amount: amount})
+  end
+
+  @zero_decimal Decimal.new(0)
+
+  def transfer(from, to, amount) do
+    Repo.transaction(fn ->
+      # Locks all walllets for duration, clean this up later.
+      sender_wallet = wallet_for_user!(from)
+
+      balance = Wallet.balance(sender_wallet)
+      new_balance = Decimal.sub(balance, amount)
+
+      case Decimal.lt?(new_balance, @zero_decimal) do
+        true ->
+          {:error, "Insufficient balance"}
+
+        false ->
+          debit = Decimal.negate(amount)
+          credit = amount
+          receiver_wallet = wallet_for_user!(to)
+
+          # Debit the sender
+          create_movement(sender_wallet, %{amount: debit})
+          # Credit the receiver
+          create_movement(receiver_wallet, %{amount: credit})
+
+          :ok
+      end
+    end)
+  end
+
+  defp wallet_for_user!(user, opts \\ []) do
+    query =
+      Wallet
+      |> where(user_id: ^user.id)
+      |> preload([:movements])
+
+    query = if Keyword.get(opts, :lock) == :none, do: query, else: lock(query, "FOR UPDATE")
+
+    Repo.one!(query)
   end
 
   defp create_movement(wallet = %Wallet{}, attrs \\ %{}, repo \\ Repo) do

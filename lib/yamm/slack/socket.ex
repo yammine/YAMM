@@ -3,6 +3,7 @@ defmodule YAMM.Slack.Socket do
 
   def start_link(opts \\ []) do
     options = Keyword.merge([name: __MODULE__], opts)
+
     url = YAMM.Slack.get_connect_ws(Application.get_env(:slack, :app_token))
 
     WebSockex.start_link(url, __MODULE__, [], options)

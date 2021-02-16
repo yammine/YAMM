@@ -6,6 +6,13 @@ defmodule YAMM.Application do
   use Application
 
   def start(_type, _args) do
+    # dotenv
+    unless Mix.env() == :prod do
+      Envy.auto_load()
+      # This is usually run before starting any applications, so we have to manually reload config
+      Mix.Task.run("loadconfig")
+    end
+
     children = [
       # Start the Ecto repository
       YAMM.Repo,

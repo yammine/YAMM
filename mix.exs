@@ -51,6 +51,8 @@ defmodule YAMM.MixProject do
       {:ecto_psql_extras, "~> 0.2"},
       {:websockex, git: "https://github.com/Azolo/websockex.git"},
       {:mojito, "~> 0.7.7"},
+      {:nimble_parsec, "~> 1.0"},
+      {:envy, "~> 1.1.1", only: [:dev, :test]}
     ]
   end
 

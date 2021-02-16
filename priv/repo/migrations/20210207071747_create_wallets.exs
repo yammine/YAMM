@@ -9,6 +9,6 @@ defmodule YAMM.Repo.Migrations.CreateWallets do
       timestamps()
     end
 
-    create index(:wallets, [:user_id])
+    create unique_index(:wallets, [:user_id])
   end
 end
